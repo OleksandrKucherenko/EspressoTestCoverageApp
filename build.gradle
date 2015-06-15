@@ -1,0 +1,39 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:1.2.3'
+
+        // spoon uses a different version of guava than espresso
+        //see: https://github.com/stanfy/spoon-gradle-plugin/issues/33
+        classpath ('com.stanfy.spoon:spoon-gradle-plugin:1.0.2') {
+            exclude module: 'guava'
+        }
+        classpath 'com.google.guava:guava:17.0'
+    }
+}
+
+allprojects {
+    repositories {
+        jcenter()
+    }
+
+    ext {
+
+        // compilation with java 1.7
+        projectSourceCompatibility = JavaVersion.VERSION_1_7
+        projectTargetCompatibility = JavaVersion.VERSION_1_7
+
+        // library versions
+        appcompatv7Version = "22.2.0"
+        appcompatv4Version = "22.2.0"
+        supportAnnotationVersion = "22.2.0"
+        supportTestEspressoVersion = "2.2"
+        supportTestRunnerVersion = "0.3"
+
+        spoonClientVersion = "1.1.9"
+    }
+}
