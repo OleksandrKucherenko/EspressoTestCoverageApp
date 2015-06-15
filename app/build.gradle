@@ -40,6 +40,17 @@ android {
         exclude 'META-INF/LICENSE.txt'
         exclude 'LICENSE.txt'
     }
+
+
+    sourceSets {
+        androidTest {
+// include library sources into tests
+            java.srcDirs android.sourceSets.main.java.srcDirs
+        }
+
+        debug.setRoot('build-types/debug')
+        release.setRoot('build-types/release')
+    }
 }
 
 dependencies {
