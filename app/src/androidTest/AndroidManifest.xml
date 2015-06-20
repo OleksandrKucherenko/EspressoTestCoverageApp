@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+    package="org.michenux.espressotestcoverageapp"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <application/>
+
+  <!-- JaCoCo saves data to SDCARD, we needs WRITE access to external storage -->
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+
+</manifest>

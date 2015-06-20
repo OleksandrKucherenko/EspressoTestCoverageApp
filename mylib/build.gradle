@@ -2,32 +2,32 @@ apply plugin: 'jacoco'
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 22
-    buildToolsVersion "23.0.0 rc2"
+  compileSdkVersion 22
+  buildToolsVersion "23.0.0 rc2"
 
-    defaultConfig {
-        minSdkVersion 22
-        targetSdkVersion 22
-        versionCode 1
-        versionName "1.0"
+  defaultConfig {
+    minSdkVersion 22
+    targetSdkVersion 22
+    versionCode 1
+    versionName "1.0"
+  }
+  buildTypes {
+    debug {
+      testCoverageEnabled true
     }
-    buildTypes {
-        debug {
-            testCoverageEnabled true
-        }
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
+    release {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
     }
+  }
 
-    lintOptions {
-        abortOnError false
-    }
+  lintOptions {
+    abortOnError false
+  }
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:appcompat-v7:22.2.0'
-    compile 'com.android.support:support-annotations:22.2.0'
+  compile fileTree(dir: 'libs', include: ['*.jar'])
+  compile 'com.android.support:appcompat-v7:22.2.0'
+  compile 'com.android.support:support-annotations:22.2.0'
 }

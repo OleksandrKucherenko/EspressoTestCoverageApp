@@ -1,102 +1,177 @@
+// APPLICATION
+
 apply plugin: 'jacoco'
 apply plugin: 'com.android.application'
-apply plugin: 'spoon'
+//apply plugin: 'spoon'
 
 android {
-    compileSdkVersion 22
-    buildToolsVersion "23.0.0 rc2"
+  compileSdkVersion 22
+  buildToolsVersion "23.0.0 rc2"
 
-    defaultConfig {
-        applicationId "org.michenux.espressotestcoverageapp"
-        minSdkVersion 22
-        targetSdkVersion 22
-        versionCode 1
-        versionName "1.0"
+  defaultConfig {
+    applicationId "org.michenux.espressotestcoverageapp"
+    minSdkVersion 22
+    targetSdkVersion 22
+    versionCode 1
+    versionName "1.0"
 
-        testInstrumentationRunner "org.michenux.espressotestcoverageapp.AndroidJacocoTestRunner"
+    testInstrumentationRunner "org.michenux.espressotestcoverageapp.AndroidJacocoTestRunner"
+    //testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+  }
+
+  buildTypes {
+    debug {
+      testCoverageEnabled true
     }
-    buildTypes {
-        debug {
-            testCoverageEnabled true
-        }
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
+    release {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
     }
+  }
 
-    lintOptions {
-        abortOnError false
-    }
+//  productFlavors {
+//    free {}
+//    commercial {}
+//  }
 
-    jacoco {
-        //bug in code coverage with espresso 2.1:
-        //https://code.google.com/p/android/issues/detail?id=170607
-        version "0.7.3.201502191951"
-    }
+  lintOptions {
+    abortOnError false
+  }
 
-    packagingOptions {
-        exclude 'META-INF/LICENCE.txt'
-        exclude 'META-INF/LICENSE.txt'
-        exclude 'LICENSE.txt'
-    }
+  jacoco {
+    //bug in code coverage with espresso 2.1:
+    //https://code.google.com/p/android/issues/detail?id=170607
+    // http://search.maven.org/remotecontent?filepath=org/jacoco/jacoco/0.7.5.201505241946/jacoco-0.7.5.201505241946.zip
+    version "0.7.5.201505241946"
+  }
 
+  packagingOptions {
+    exclude 'META-INF/LICENCE.txt'
+    exclude 'META-INF/LICENSE.txt'
+    exclude 'LICENSE.txt'
+  }
 
-    sourceSets {
-        androidTest {
+  sourceSets {
+    androidTest {
 // include library sources into tests
-            java.srcDirs android.sourceSets.main.java.srcDirs
-        }
-
-        debug.setRoot('build-types/debug')
-        release.setRoot('build-types/release')
+      java.srcDirs android.sourceSets.main.java.srcDirs
     }
+
+    debug.setRoot('build-types/debug')
+    release.setRoot('build-types/release')
+  }
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile project(':mylib')
+  compile fileTree(dir: 'libs', include: ['*.jar'])
+  compile project(':mylib')
 
-    compile "com.android.support:appcompat-v7:$appcompatv7Version"
-    compile "com.android.support:support-v4:$appcompatv4Version"
+  compile "com.android.support:appcompat-v7:$appcompatv7Version"
+  compile "com.android.support:support-v4:$appcompatv4Version"
 
-    //to run test: ./gradlew connectedAndroidTest
-    androidTestCompile "com.android.support.test.espresso:espresso-core:$supportTestEspressoVersion"
-    androidTestCompile "com.android.support:support-annotations:$supportAnnotationVersion"
-    androidTestCompile "com.android.support.test:runner:$supportTestRunnerVersion"
+  //to run test: ./gradlew connectedAndroidTest
+  androidTestCompile "com.android.support.test.espresso:espresso-core:$supportTestEspressoVersion"
+  androidTestCompile "com.android.support:support-annotations:$supportAnnotationVersion"
+  androidTestCompile "com.android.support.test:runner:$supportTestRunnerVersion"
 
-    androidTestCompile "com.squareup.spoon:spoon-client:$spoonClientVersion"
+//    androidTestCompile "com.squareup.spoon:spoon-client:$spoonClientVersion"
+}
+
+jacoco {
+  // http://search.maven.org/remotecontent?filepath=org/jacoco/jacoco/0.7.5.201505241946/jacoco-0.7.5.201505241946.zip
+  toolVersion "0.7.5.201505241946"
+}
+
+afterEvaluate { iterateVariants(this.&fixJacocoAndroidTest) }
+
+def iterateVariants(func) {
+  if (project.android.productFlavors.size() > 0) {
+    project.android.productFlavors.each { f ->
+      iterateBuildTypes(f.name, func)
+    }
+  } else {
+    iterateBuildTypes('', func)
+  }
+}
+
+def iterateBuildTypes(String flavor, func) {
+  project.android.buildTypes.each { b ->
+    func(flavor, b.name);
+  }
+}
+
+def fixJacocoAndroidTest(String f, String b) {
+  def flavor = f.capitalize()
+  def buildType = b.capitalize()
+
+  if ("Release" == buildType) return; // exclude releases
+
+  def after1 = "preDex${flavor}${buildType}AndroidTest"
+  def before = "dex${flavor}${buildType}AndroidTest"
+
+  def agentName = "fixJacocoAgentAndroidTest${flavor}${buildType}"
+  project.task(agentName, type: Copy, dependsOn: [after1]) {
+    group = 'Workaround'
+    description = "Fix Jacoco Agent instrumentation for ${before}."
+
+    def src = "${project.buildDir}/intermediates/pre-dexed/${flavor}/${buildType}"
+    def dst = "${project.buildDir}/intermediates/pre-dexed/androidTest/${flavor}/${buildType}"
+
+    project.logger.lifecycle("Source: ${src}")
+    project.logger.lifecycle("Destination: ${dst}")
+
+    // jacocoagent-e6c058ec32129ab32585af898a646b6a20305f0a.jar
+    from(src) { include '**/jacocoagent-*.jar' }
+    into dst
+  }
+
+  tasks.getByName(before).dependsOn agentName
+
+  def after = "instrument${flavor}${buildType}"
+  def taskName = "fixJacocoAndroidTest${flavor}${buildType}"
+  project.task(taskName, type: Copy, dependsOn: [after]) {
+    group = 'Workaround'
+    description = "Fix Jacoco offline instrumentation for instrument${flavor}${buildType}."
+
+    def src = "${project.buildDir}/intermediates/coverage-instrumented-classes/${flavor}/${buildType}"
+    def dst = "${project.buildDir}/intermediates/classes/androidTest/${flavor}/${buildType}"
+
+    from src
+    into dst
+  }
+
+  tasks.getByName(before).dependsOn taskName
 }
 
 //to run spoon: ./gradlew spoon
-spoon {
-    debug = true
-}
+//spoon {
+//    debug = true
+//}
 
-task jacocoTestReport(type: JacocoReport, dependsOn: "connectedAndroidTest") {
-
-    description = "Generates Jacoco coverage reports: XML and HTML"
-    group = "Reporting"
-
-    jacocoClasspath = project.configurations['androidJacocoAnt']
-
-    // exclude auto-generated classes and tests
-    def fileFilter = ['**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*',
-                      'android/**/*.*']
-    def testsTree = fileTree(dir: "${project.buildDir}/intermediates/classes/androidTest/debug", excludes: fileFilter)
-    def debugTree = fileTree(dir: "${project.buildDir}/intermediates/classes/debug", excludes: fileFilter)
-    def releaseTree = fileTree(dir: "${project.buildDir}/intermediates/classes/release", excludes: fileFilter)
-
-    def libDebugTree = fileTree(dir: "${rootDir}/mylib/build/intermediates/classes/debug", excludes: fileFilter)
-    def libReleaseTree = fileTree(dir: "${rootDir}/mylib/build/intermediates/classes/release", excludes: fileFilter)
-
-    def testsSrc = "${project.projectDir}/src/test/java"
-    def mainSrc = "${project.projectDir}/src/main/java"
-
-    def libSrc = "${rootDir}/mylib/src/main/java"
-
-    sourceDirectories = files([testsSrc, mainSrc, libSrc])
-    classDirectories = files([testsTree, debugTree, releaseTree, libDebugTree, libReleaseTree])
-
-    executionData = fileTree(dir: project.projectDir, includes: ['**/*.exec', '**/*.ec'])
-}
+//task jacocoTestReport(type: JacocoReport, dependsOn: "connectedAndroidTest") {
+//
+//  description = "Generates Jacoco coverage reports: XML and HTML"
+//  group = "Reporting"
+//
+//  jacocoClasspath = project.configurations['androidJacocoAnt']
+//
+//  // exclude auto-generated classes and tests
+//  def fileFilter = ['**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*',
+//                    'android/**/*.*']
+//  def testsTree = fileTree(dir: "${project.buildDir}/intermediates/classes/androidTest/debug", excludes: fileFilter)
+//  def debugTree = fileTree(dir: "${project.buildDir}/intermediates/classes/debug", excludes: fileFilter)
+//  def releaseTree = fileTree(dir: "${project.buildDir}/intermediates/classes/release", excludes: fileFilter)
+//
+//  def libDebugTree = fileTree(dir: "${rootDir}/mylib/build/intermediates/classes/debug", excludes: fileFilter)
+//  def libReleaseTree = fileTree(dir: "${rootDir}/mylib/build/intermediates/classes/release", excludes: fileFilter)
+//
+//  def testsSrc = "${project.projectDir}/src/test/java"
+//  def mainSrc = "${project.projectDir}/src/main/java"
+//
+//  def libSrc = "${rootDir}/mylib/src/main/java"
+//
+//  sourceDirectories = files([testsSrc, mainSrc, libSrc])
+//  classDirectories = files([testsTree, debugTree, releaseTree, libDebugTree, libReleaseTree])
+//
+//  executionData = fileTree(dir: project.projectDir, includes: ['**/*.exec', '**/*.ec'])
+//}

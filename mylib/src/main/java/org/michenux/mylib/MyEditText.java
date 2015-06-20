@@ -1,6 +1,7 @@
 package org.michenux.mylib;
 
 import android.content.Context;
+import android.support.annotation.NonNull;
 import android.util.AttributeSet;
 import android.widget.EditText;
 
@@ -9,7 +10,7 @@ import android.widget.EditText;
  */
 public class MyEditText extends EditText {
 
-    public MyEditText(Context context) {
+    public MyEditText(@NonNull Context context) {
         super(context);
     }
 
