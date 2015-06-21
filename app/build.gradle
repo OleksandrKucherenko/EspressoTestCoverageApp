@@ -77,6 +77,11 @@ dependencies {
 //    androidTestCompile "com.squareup.spoon:spoon-client:$spoonClientVersion"
 }
 
+//to run spoon: ./gradlew spoon
+//spoon {
+//    debug = true
+//}
+
 jacoco {
   // http://search.maven.org/remotecontent?filepath=org/jacoco/jacoco/0.7.5.201505241946/jacoco-0.7.5.201505241946.zip
   toolVersion "0.7.5.201505241946"
@@ -100,6 +105,25 @@ def iterateBuildTypes(String flavor, func) {
   }
 }
 
+def adoptToOs(String path) {
+  // remove doubled dir separators
+  path = path.replace("//", "/")
+  path = path.replace("\\\\", "\\")
+
+  if (org.apache.tools.ant.taskdefs.condition.Os.isFamily(
+      org.apache.tools.ant.taskdefs.condition.Os.FAMILY_WINDOWS)) { // windows
+    path = path.replace("/", "\\")
+  } else if (org.apache.tools.ant.taskdefs.condition.Os.isFamily(
+      org.apache.tools.ant.taskdefs.condition.Os.FAMILY_UNIX)) { // linux
+    path = path.replace("\\", "/")
+  } else if (org.apache.tools.ant.taskdefs.condition.Os.isFamily(
+      org.apache.tools.ant.taskdefs.condition.Os.FAMILY_MAC)) { // mac os
+    path = path.replace("\\", "/")
+  }
+
+  return path;
+}
+
 def fixJacocoAndroidTest(String f, String b) {
   def flavor = f.capitalize()
   def buildType = b.capitalize()
@@ -114,11 +138,11 @@ def fixJacocoAndroidTest(String f, String b) {
     group = 'Workaround'
     description = "Fix Jacoco Agent instrumentation for ${before}."
 
-    def src = "${project.buildDir}/intermediates/pre-dexed/${flavor}/${buildType}"
-    def dst = "${project.buildDir}/intermediates/pre-dexed/androidTest/${flavor}/${buildType}"
+    def src = adoptToOs("${project.buildDir}/intermediates/pre-dexed/${flavor}/${buildType}")
+    def dst = adoptToOs("${project.buildDir}/intermediates/pre-dexed/androidTest/${flavor}/${buildType}")
 
-    project.logger.lifecycle("Source: ${src}")
-    project.logger.lifecycle("Destination: ${dst}")
+    project.logger.info("  -- Source: ${src}")
+    project.logger.info("  -- Destination: ${dst}")
 
     // jacocoagent-e6c058ec32129ab32585af898a646b6a20305f0a.jar
     from(src) { include '**/jacocoagent-*.jar' }
@@ -133,8 +157,11 @@ def fixJacocoAndroidTest(String f, String b) {
     group = 'Workaround'
     description = "Fix Jacoco offline instrumentation for instrument${flavor}${buildType}."
 
-    def src = "${project.buildDir}/intermediates/coverage-instrumented-classes/${flavor}/${buildType}"
-    def dst = "${project.buildDir}/intermediates/classes/androidTest/${flavor}/${buildType}"
+    def src = adoptToOs("${project.buildDir}/intermediates/coverage-instrumented-classes/${flavor}/${buildType}")
+    def dst = adoptToOs("${project.buildDir}/intermediates/classes/androidTest/${flavor}/${buildType}")
+
+    project.logger.info("  -- Source: ${src}")
+    project.logger.info("  -- Destination: ${dst}")
 
     from src
     into dst
@@ -143,35 +170,57 @@ def fixJacocoAndroidTest(String f, String b) {
   tasks.getByName(before).dependsOn taskName
 }
 
-//to run spoon: ./gradlew spoon
-//spoon {
-//    debug = true
-//}
+task pullCoverageResults(type: Exec) {
+  group = 'Reporting'
+  description = 'Extract coverage results from device to PC.'
 
-//task jacocoTestReport(type: JacocoReport, dependsOn: "connectedAndroidTest") {
-//
-//  description = "Generates Jacoco coverage reports: XML and HTML"
-//  group = "Reporting"
-//
-//  jacocoClasspath = project.configurations['androidJacocoAnt']
-//
-//  // exclude auto-generated classes and tests
-//  def fileFilter = ['**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*',
-//                    'android/**/*.*']
-//  def testsTree = fileTree(dir: "${project.buildDir}/intermediates/classes/androidTest/debug", excludes: fileFilter)
-//  def debugTree = fileTree(dir: "${project.buildDir}/intermediates/classes/debug", excludes: fileFilter)
-//  def releaseTree = fileTree(dir: "${project.buildDir}/intermediates/classes/release", excludes: fileFilter)
-//
-//  def libDebugTree = fileTree(dir: "${rootDir}/mylib/build/intermediates/classes/debug", excludes: fileFilter)
-//  def libReleaseTree = fileTree(dir: "${rootDir}/mylib/build/intermediates/classes/release", excludes: fileFilter)
-//
-//  def testsSrc = "${project.projectDir}/src/test/java"
-//  def mainSrc = "${project.projectDir}/src/main/java"
-//
-//  def libSrc = "${rootDir}/mylib/src/main/java"
-//
-//  sourceDirectories = files([testsSrc, mainSrc, libSrc])
-//  classDirectories = files([testsTree, debugTree, releaseTree, libDebugTree, libReleaseTree])
-//
-//  executionData = fileTree(dir: project.projectDir, includes: ['**/*.exec', '**/*.ec'])
-//}
+  outputs.upToDateWhen { /* RUN ALWAYS! */ return false; }
+
+  //def sdk = android.getSdkDirectory().toString()
+  def adb = android.getAdbExe().toString()
+  def dst = adoptToOs("${project.buildDir}/outputs/code-coverage")
+
+  // extract report file path
+  Properties props = new Properties()
+  props.load(new FileInputStream("${project.projectDir}/src/androidTest/resources/jacoco-agent.properties"))
+  String coverage = props.getProperty('destfile')
+
+  // log information for debug purposes
+  project.logger.info("  -- Coverage file: $coverage")
+  project.logger.info("  -- Destination: $dst")
+  project.logger.info("  -- ADB: $adb")
+
+  // create output folder if it does not exists
+  File fDstDir = new File("$dst")
+  if (!fDstDir.exists()) fDstDir.mkdirs()
+
+  // execute extraction
+  commandLine "$adb", 'pull', "$coverage", dst
+}
+
+task jacocoTestReport(type: JacocoReport, dependsOn: ["pullCoverageResults"]) {
+  description = "Generates Jacoco coverage reports: XML and HTML"
+  group = "Reporting"
+
+  jacocoClasspath = project.configurations['androidJacocoAnt']
+
+  // exclude auto-generated classes and tests
+  def fileFilter = ['**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*',
+                    'android/**/*.*']
+  def testsTree = fileTree(dir: "${project.buildDir}/intermediates/classes/androidTest/debug", excludes: fileFilter)
+  def debugTree = fileTree(dir: "${project.buildDir}/intermediates/classes/debug", excludes: fileFilter)
+  def releaseTree = fileTree(dir: "${project.buildDir}/intermediates/classes/release", excludes: fileFilter)
+
+  def libDebugTree = fileTree(dir: "${rootDir}/mylib/build/intermediates/classes/debug", excludes: fileFilter)
+  def libReleaseTree = fileTree(dir: "${rootDir}/mylib/build/intermediates/classes/release", excludes: fileFilter)
+
+  def testsSrc = "${project.projectDir}/src/test/java"
+  def mainSrc = "${project.projectDir}/src/main/java"
+
+  def libSrc = "${rootDir}/mylib/src/main/java"
+
+  sourceDirectories = files([testsSrc, mainSrc, libSrc])
+  classDirectories = files([testsTree, debugTree, releaseTree, libDebugTree, libReleaseTree])
+
+  executionData = fileTree(dir: project.projectDir, includes: ['**/*.exec', '**/*.ec'])
+}
