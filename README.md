@@ -15,7 +15,7 @@ AndroidTest configuration produce a special APK. Inside it included source code 
 
 That is why inside Android should be used a special way for code coverage instruments. Its known as a "JaCoCo offline mode". In two words - this is a pre-processing of *.class files and embedding into them of special Jacoco method, that executed from class constructor. So when you execute the tests, Jacoco is able to identify that and collect runtime information.
 
-Example: https://raw.githubusercontent.com/OleksandrKucherenko/EspressoTestCoverageApp/master/jacoco-offline.png
+Example: ![JaCoCo Offline Mode][jacoco-offlin]
 
 Android build system should do that all, but looks like it fails at the current moment. 
 
@@ -30,7 +30,7 @@ Steps that build system should do:
 8) Generate HTML coverage report - NO
 
 ## The Solution
-all in this Gradle file: https://github.com/OleksandrKucherenko/EspressoTestCoverageApp/blob/jacoco/app/build.gradle
+all in this Gradle file: [App Build Gradle File][build.gradle]
 
 *Step #1:* use the latest version of JaCoCo ("0.7.5.201505241946")
 
@@ -62,3 +62,6 @@ than your coverage report will be in folder:
 ```
 EspressoTestCoverageApp\app\build\reports\coverage\debug\ 
 ```
+
+[jacoco-offlin]: https://raw.githubusercontent.com/OleksandrKucherenko/EspressoTestCoverageApp/master/jacoco-offline.png
+[build.gradle]: https://github.com/OleksandrKucherenko/EspressoTestCoverageApp/blob/jacoco/app/build.gradle
