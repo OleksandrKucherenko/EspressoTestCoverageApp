@@ -63,5 +63,22 @@ than your coverage report will be in folder:
 EspressoTestCoverageApp\app\build\reports\coverage\debug\ 
 ```
 
+# Android Studio
+
+For execution of tests from Android studio, please create run configuration simillar to screenshot:
+
+![Espresso Run Configuration][esspreso.config]
+
+Instrumentation Runner:
+```
+org.michenux.espressotestcoverageapp.AndroidJacocoTestRunner
+```
+
+After the test you can always execute in terminal a command for getting a jacoco coverage report from just executed tests:
+```bash
+gradlew :app:jacocoTestReport
+```
+
 [jacoco-offlin]: https://raw.githubusercontent.com/OleksandrKucherenko/EspressoTestCoverageApp/master/jacoco-offline.png
+[esspreso.config]: https://raw.githubusercontent.com/OleksandrKucherenko/EspressoTestCoverageApp/master/espresso-configuration.png
 [build.gradle]: https://github.com/OleksandrKucherenko/EspressoTestCoverageApp/blob/jacoco/app/build.gradle
